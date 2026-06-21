@@ -157,7 +157,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
                     { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
                     { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
                     { name: '➕ Roles Created', value: '15', inline: true },
-                    { name: '➕ Channels Created', value: '55', inline: true }
+                    { name: '➕ Channels Created', value: '35', inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Wavey Nuke Bot' });

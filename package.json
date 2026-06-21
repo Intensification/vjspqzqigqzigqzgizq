@@ -1,10 +1,12 @@
 {
   "name": "nuke",
   "version": "1.0.0",
-  "type": "module",
   "main": "nuke.js",
   "scripts": {
     "start": "node nuke.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0"
   },
   "engines": {
     "node": ">=20"

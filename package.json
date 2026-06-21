@@ -1,0 +1,12 @@
+{
+  "name": "nuke",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "nuke.js",
+  "scripts": {
+    "start": "node nuke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

